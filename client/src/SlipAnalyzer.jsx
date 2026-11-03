@@ -14,7 +14,7 @@ function PickCard({ p }) {
     <div className="sp">
       <div className="pt">
         <div>
-          <div className="mk">{p.when} · {p.market}</div>
+          <div className="mk">{p.when ? p.when + " · " : ""}{p.market}</div>
           <div className="tm">{p.home} vs {p.away}</div>
           <div className="pn small">{p.pick} <span className="meta">@{p.odds || "?"}</span></div>
         </div>
@@ -50,10 +50,10 @@ export default function SlipAnalyzer() {
   const [error, setError] = useState("");
 
   async function run() {
-    const picks = parseSlip(text);
+    const { picks, total, suspended } = parseSlip(text);
     if (!picks.length) {
       setData(null);
-      setError("No picks found. Paste the full list, including the Game ID, team, Pick and Market lines.");
+      setError("No picks found. Paste the full list, either the Game ID layout or Over/Under lines with team names and odds.");
       return;
     }
     setError(""); setData(null); setBusy(true); setProgress({ done: 0, total: picks.length });
@@ -78,8 +78,7 @@ export default function SlipAnalyzer() {
       setError("The analysis failed. Check that the server is running and your API key is set.");
       return;
     }
-    const entries = (text.match(/Game ID:/gi) || []).length;
-    setData({ results, missed: picks.length - results.length, ignored: entries - picks.length });
+    setData({ results, missed: picks.length - results.length, ignored: total - picks.length - suspended, suspended });
   }
 
   const group = (v) => (data ? data.results.filter((p) => p.verdict === v).sort((a, b) => b.prob - a.prob) : []);
@@ -121,7 +120,8 @@ export default function SlipAnalyzer() {
             <p className="warn top12">
               Each extra leg multiplies the risk, so stacking many “safe” picks still loses often. Shorter slips are usually smarter than long ones.
               {data.missed > 0 && ` ${data.missed} pick(s) couldn’t be analyzed; try again.`}
-              {data.ignored > 0 && ` ${data.ignored} entry(ies) had no pick and were ignored.`}
+              {data.ignored > 0 && ` ${data.ignored} incomplete entry(ies) were ignored.`}
+              {data.suspended > 0 && ` ${data.suspended} suspended pick(s) with no odds were skipped.`}
             </p>
           </div>
           <Section title="✅ Play" items={play} />
